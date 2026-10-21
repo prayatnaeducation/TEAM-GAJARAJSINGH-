@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DHAKERKHARI Panchayat | ढाकरखेड़ी पंचायत</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Firebase Realtime Database SDK (Compat v10.12.2 via jsDelivr) -->
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-database-compat.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .num-btn {
+      transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .num-btn:hover {
+      transform: translateY(-1px);
+    }
+    .num-btn:active {
+      transform: scale(0.96);
+    }
+    .num-btn.selected-green {
+      background-color: #16a34a !important;
+      border-color: #15803d !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 6px rgba(22, 163, 74, 0.35);
+    }
+    .num-btn.remote-flash {
+      animation: pulseRing 0.9s ease-out;
+    }
+    @keyframes pulseRing {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.85);
+        transform: scale(1.06);
+      }
+      100% {
+        box-shadow: 0 2px 6px rgba(22, 163, 74, 0.35);
+        transform: scale(1);
+      }
+    }
+    .ward-tab {
+      transition: all 0.18s ease;
+    }
+    .ward-tab.active-tab {
+      background-color: #0f766e;
+      color: #ffffff;
+      border-color: #0f766e;
+      box-shadow: 0 4px 10px rgba(15, 118, 110, 0.25);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      height: 4px;
+    }
+    .no-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .no-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+
+  <!-- Top Header Banner -->
+  <header class="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-800 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0 shadow-inner" aria-hidden="true">
+            <svg class="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M4 18h16M6 18v-7m4 7v-7m4 7v-7m4 7v-7M12 3l9 5H3l9-5z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30">
+                पंचायती राज डिजिटल पोर्टल
+              </span>
+              <span class="text-xs text-teal-100/90">कुल 9 वार्ड • प्रत्येक वार्ड 1–315</span>
+            </div>
+            <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight mt-0.5">
+             धाकड़खेड़़ी पंचायत
+            </h1>
+            <p class="text-xs sm:text-sm text-teal-100">
+              वार्डवार क्रमांक चयन एवं रीयल-टाइम वैश्विक क्लाउड सिंक पटल
+            </p>
+          </div>
+        </div>
+
+        <!-- Right Controls: Cloud Sync Status + Overall Summary -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <!-- Real-Time Cloud Sync Pill & Config Trigger -->
+          <div class="bg-teal-950/60 border border-white/20 rounded-xl px-3.5 py-2 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span id="syncPulseDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+              <div>
+                <div id="syncModeTitle" class="text-xs font-bold text-white leading-tight">
+                  रीयल-टाइम सिंक सक्रिय
+                </div>
+                <div id="lastSyncTimeText" class="text-[11px] text-teal-200 leading-tight">
+                  सभी डिवाइसों पर त्वरित अपडेट
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                id="manualSyncBtn"
+                title="अभी क्लाउड से सिंक करें"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition"
+              >
+                सिंक करें
+              </button>
+              <button
+                type="button"
+                id="openFirebaseModalBtn"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-400 hover:bg-amber-300 text-slate-950 transition shadow-xs"
+              >
+                क्लाउड सेटअप
+              </button>
+            </div>
+          </div>
+
+          <!-- Overall All-Wards Summary Pill -->
+          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 flex items-center justify-between md:justify-end gap-3">
+            <div>
+              <div class="text-xs text-teal-100">संपूर्ण पंचायत प्रगति (सभी 9 वार्ड)</div>
+              <div class="text-sm sm:text-base font-bold text-white flex items-baseline gap-1.5">
+                <span id="overallSelectedCount">0</span>
+                <span class="text-xs font-normal text-teal-200">/ 2835 चयनित</span>
+                <span id="overallPercentBadge" class="ml-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-400/30">0%</span>
+              </div>
+            </div>
+            <div class="w-20 sm:w-24 bg-teal-950/60 rounded-full h-2.5 overflow-hidden border border-white/10">
+              <div id="overallProgressBar" class="bg-emerald-400 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs for 9 Wards -->
+    <div class="bg-teal-950/50 border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+        <nav id="wardTabsContainer" aria-label="वार्ड नेविगेशन टैब" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+          <!-- Populated dynamically by JS with वार्ड 1 through वार्ड 9 -->
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+
+    <!-- Real-Time Global Sync Status Banner -->
+    <section class="bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 rounded-2xl border border-emerald-200/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shadow-2xs">
+      <div class="flex items-center gap-2.5 text-xs sm:text-sm text-slate-700">
+        <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs shrink-0">⚡</span>
+        <div>
+          <span class="font-bold text-slate-900">वैश्विक रीयल-टाइम बैकएंड:</span>
+          <span id="liveBannerStatusText">
+            किसी भी क्रमांक पर क्लिक करने पर वह तुरंत वैश्विक डेटाबेस और सभी खुले डिवाइसों/टैब्स पर हरा (चयनित) हो जाता है।
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0 text-xs">
+        <span id="latestGlobalEventBadge" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 font-medium">
+          अंतिम वैश्विक क्रिया: प्रतीक्षारत
+        </span>
+      </div>
+    </section>
+
+    <!-- Active Ward Info & Controls Card -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Ward Title and Progress -->
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h2 id="activeWardHeading" class="text-xl sm:text-2xl font-bold text-slate-900">
+              वार्ड 1 — क्रमांक सूची (1 से 315)
+            </h2>
+            <span id="wardStatusBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              स्थायी रूप से सुरक्षित
+            </span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600">
+            किसी भी क्रमांक बटन पर क्लिक करने पर वह स्थायी रूप से <span class="font-semibold text-emerald-700">हरा (चयनित)</span> हो जाएगा और सभी डिवाइसों तथा पेज रीफ्रेश पर तुरंत सिंक रहेगा।
+          </p>
+        </div>
+
+        <!-- Ward Stats Boxes -->
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-3 shrink-0">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-center">
+            <div class="text-xs text-slate-500 font-medium">कुल क्रमांक</div>
+            <div class="text-lg sm:text-xl font-bold text-slate-800">315</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2 text-center">
+            <div class="text-xs text-emerald-700 font-medium">चयनित (हरा)</div>
+            <div id="wardSelectedCount" class="text-lg sm:text-xl font-bold text-emerald-700">0</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2 text-center">
+            <div class="text-xs text-amber-800 font-medium">शेष क्रमांक</div>
+            <div id="wardRemainingCount" class="text-lg sm:text-xl font-bold text-amber-700">315</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ward Progress Bar -->
+      <div class="mt-4">
+        <div class="flex items-center justify-between text-xs text-slate-600 mb-1">
+          <span id="wardProgressLabel">वार्ड 1 की प्रगति</span>
+          <span id="wardProgressPercent" class="font-semibold text-emerald-700">0% पूर्ण</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
+          <div id="wardProgressBar" class="bg-emerald-600 h-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Filter, Search & Helper Controls -->
+      <div class="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <!-- Filter Pills -->
+        <div class="flex items-center gap-1.5 flex-wrap" role="group" aria-label="क्रमांक फ़िल्टर">
+          <span class="text-xs font-medium text-slate-500 mr-1">दृश्य फ़िल्टर:</span>
+          <button type="button" id="filterAllBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-700 text-white shadow-sm transition">
+            सभी (315)
+          </button>
+          <button type="button" id="filterSelectedBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+            केवल चयनित (हरा)
+          </button>
+          <button type="button" id="filterUnselectedBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+            केवल शेष
+          </button>
+        </div>
+
+        <!-- Search Input & Legend -->
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <div class="relative flex-1 sm:flex-initial">
+            <input
+              type="number"
+              id="searchNumberInput"
+              min="1"
+              max="315"
+              placeholder="क्रमांक खोजें (1-315)..."
+              class="w-full sm:w-48 pl-3 pr-8 py-1.5 text-xs sm:text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-teal-600"
+            />
+            <button
+              type="button"
+              id="clearSearchBtn"
+              title="खोज साफ़ करें"
+              class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold px-1"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex items-center gap-3 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded bg-white border border-slate-300 inline-block"></span>
+              <span>सामान्य</span>
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded bg-emerald-600 border border-emerald-700 inline-block"></span>
+              <span class="font-medium text-emerald-800">चयनित (हरा)</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Numbered Buttons Grid Section (1 to 315) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+      <div id="emptyFilterNotice" class="hidden py-12 text-center space-y-2">
+        <div class="text-base font-semibold text-slate-700" id="emptyFilterText">इस फ़िल्टर में कोई क्रमांक उपलब्ध नहीं है।</div>
+        <button type="button" id="resetFilterBtn" class="mt-2 inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-700 text-white hover:bg-teal-800 transition">
+          सभी क्रमांक दिखाएं
+        </button>
+      </div>
+
+      <div
+        id="numbersGrid"
+        class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-15 gap-2 sm:gap-2.5"
+        style="grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));"
+        aria-label="वार्ड क्रमांक बटन ग्रिड"
+      >
+        <!-- 315 buttons rendered dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Firebase Real-Time Backend Configuration Modal (All in Hindi) -->
+  <div
+    id="firebaseConfigModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="firebaseModalTitle"
+    class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+  >
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden">
+      <div class="bg-gradient-to-r from-teal-900 to-emerald-800 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <h3 id="firebaseModalTitle" class="text-base sm:text-lg font-bold">
+            क्लाउड रीयल-टाइम डेटाबेस सेटअप (Firebase)
+          </h3>
+          <p class="text-xs text-teal-100 mt-0.5">
+            सभी मोबाइल और कंप्यूटर डिवाइसों पर वैश्विक रीयल-टाइम सिंक जोड़ें
+          </p>
+        </div>
+        <button
+          type="button"
+          id="closeFirebaseModalBtn"
+          aria-label="बंद करें"
+          class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs sm:text-sm text-slate-700 max-h-[80vh] overflow-y-auto">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 space-y-1">
+          <div class="font-bold">त्रि-स्तरीय रीयल-टाइम सिंक प्रणाली:</div>
+          <p>1. <strong>Firebase Realtime Database (वैश्विक क्लाउड):</strong> नीचे अपना Firebase Database URL या JSON कॉन्फ़िग दर्ज करने पर सभी डिवाइसों के बीच वास्तविक समय (<code>on('value')</code> + Live Stream) में तुरंत डेटा सिंक होता है।</p>
+          <p>2. <strong>क्रॉस-टैब लाइव सिंक (BroadcastChannel):</strong> एक ही ब्राउज़र की सभी खुली विंडो और टैब्स में बिना किसी सेटअप के तुरंत अपडेट होता है।</p>
+          <p>3. <strong>ऑफ़लाइन कैश (LocalStorage):</strong> इंटरनेट बंद होने पर भी चयन सुरक्षित रहता है और कनेक्ट होते ही क्लाउड पर सिंक हो जाता है।</p>
+        </div>
+
+        <div>
+          <label for="firebaseDbUrlInput" class="block font-semibold text-slate-800 mb-1">
+            Firebase Realtime Database URL (या पूर्ण firebaseConfig JSON):
+          </label>
+          <textarea
+            id="firebaseDbUrlInput"
+            rows="3"
+            placeholder="उदाहरण: https://dhakerkhari-panchayat-default-rtdb.firebaseio.com"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-600"
+          ></textarea>
+          <p class="text-[11px] text-slate-500 mt-1">
+            आप केवल अपना <code>https://...firebaseio.com</code> (या <code>firebasedatabase.app</code>) URL या पूरा Firebase JSON ऑब्जेक्ट पेस्ट कर सकते हैं।
+          </p>
+        </div>
+
+        <div>
+          <label for="firebaseRoomKeyInput" class="block font-semibold text-slate-800 mb-1">
+            पंचायत डेटाबेस नोड (सिंक पाथ):
+          </label>
+          <input
+            type="text"
+            id="firebaseRoomKeyInput"
+            value="dhakerkhari_panchayat_v1"
+            class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-600"
+          />
+        </div>
+
+        <!-- Security Rules Helper -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">Firebase Database नियम (Rules):</span>
+            <button
+              type="button"
+              id="copyRulesBtn"
+              class="px-2.5 py-1 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-semibold transition"
+            >
+              नियम कॉपी करें
+            </button>
+          </div>
+          <pre id="firebaseRulesPre" class="text-[11px] font-mono bg-slate-900 text-emerald-300 p-2.5 rounded-lg overflow-x-auto">{
+  "rules": {
+    "dhakerkhari_panchayat_v1": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}</pre>
+        </div>
+
+        <div id="firebaseModalFeedback" class="hidden rounded-xl px-3.5 py-2 text-xs font-semibold"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
+          <button
+            type="button"
+            id="disconnectFirebaseBtn"
+            class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+          >
+            लोकल/डिफ़ॉल्ट मोड पर रीसेट करें
+          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="cancelFirebaseModalBtn"
+              class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+            >
+              रद्द करें
+            </button>
+            <button
+              type="button"
+              id="saveFirebaseConfigBtn"
+              class="px-4 py-2 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white shadow-sm transition"
+            >
+              कनेक्ट और वैश्विक सिंक चालू करें
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div
+    id="statusToast"
+    role="status"
+    aria-live="polite"
+    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 bg-slate-900/95 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg border border-slate-700 flex items-center gap-2"
+  >
+    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+    <span id="statusToastText">क्रमांक चयनित कर सुरक्षित किया गया</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <div>ग्राम पंचायत ढाकरखेड़ी — वार्ड 1 से वार्ड 9 डिजिटल क्रमांक पटल</div>
+      <div id="storageStatusText" class="text-emerald-700 font-medium">स्थिति: रीयल-टाइम सिंक एवं स्थानीय मेमोरी में स्वतः सुरक्षित</div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const TOTAL_WARDS = 9;
+      const NUMBERS_PER_WARD = 315;
+      const STORAGE_KEY = 'dhakerkhari_panchayat_ward_selections_v1';
+      const ACTIVE_WARD_KEY = 'dhakerkhari_panchayat_active_ward_v1';
+      const FIREBASE_CONFIG_KEY = 'dhakerkhari_panchayat_firebase_cfg_v1';
+      const BROADCAST_CHANNEL_NAME = 'dhakerkhari_panchayat_realtime_channel_v1';
+
+      // State structure: { "1": Set(1, 5, ...), ..., "9": Set(...) }
+      let wardSelections = {};
+      for (let w = 1; w <= TOTAL_WARDS; w++) {
+        wardSelections[String(w)] = new Set();
+      }
+
+      let currentWard = 1;
+      let currentFilter = 'all'; // 'all' | 'selected' | 'unselected'
+      let searchQuery = '';
+      let toastTimer = null;
+
+      // Real-time backend state
+      let broadcastChannel = null;
+      let firebaseAppInstance = null;
+      let firebaseDbRef = null;
+      let sseSource = null;
+      let pollIntervalId = null;
+      let cloudConfig = {
+        databaseURL: '',
+        apiKey: '',
+        projectId: '',
+        roomKey: 'dhakerkhari_panchayat_v1'
+      };
+      let isCloudConnected = false;
+
+      function formatHindiTime(dateObj) {
+        try {
+          return dateObj.toLocaleTimeString('hi-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        } catch (e) {
+          return dateObj.toTimeString().slice(0, 8);
+        }
+      }
+
+      function updateSyncIndicators(modeText, subText, isOnlineCloud) {
+        const dot = document.getElementById('syncPulseDot');
+        const titleEl = document.getElementById('syncModeTitle');
+        const subEl = document.getElementById('lastSyncTimeText');
+        const footerStatus = document.getElementById('storageStatusText');
+
+        if (titleEl && modeText) titleEl.textContent = modeText;
+        if (subEl && subText) subEl.textContent = subText;
+        if (dot) {
+          dot.className = isOnlineCloud
+            ? 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0'
+            : 'w-2.5 h-2.5 rounded-full bg-amber-300 animate-pulse shrink-0';
+        }
+        if (footerStatus) {
+          footerStatus.textContent = isOnlineCloud
+            ? 'स्थिति: Firebase क्लाउड रीयल-टाइम डेटाबेस से जुड़ा और सुरक्षित'
+            : 'स्थिति: क्रॉस-टैब रीयल-टाइम सिंक एवं स्थानीय मेमोरी में सुरक्षित';
+        }
+      }
+
+      function recordGlobalActivity(ward, num, sourceLabel) {
+        const badge = document.getElementById('latestGlobalEventBadge');
+        if (badge) {
+          badge.textContent =
+            'अंतिम अपडेट: वार्ड ' +
+            ward +
+            ' • क्रमांक ' +
+            num +
+            ' (' +
+            sourceLabel +
+            ' • ' +
+            formatHindiTime(new Date()) +
+            ')';
+        }
+      }
+
+      // Load saved state from localStorage safely
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+              for (let w = 1; w <= TOTAL_WARDS; w++) {
+                const key = String(w);
+                if (Array.isArray(parsed[key])) {
+                  const validNums = parsed[key]
+                    .map(Number)
+                    .filter((n) => Number.isInteger(n) && n >= 1 && n <= NUMBERS_PER_WARD);
+                  wardSelections[key] = new Set(validNums);
+                }
+              }
+            }
+          }
+          const savedWard = Number(localStorage.getItem(ACTIVE_WARD_KEY));
+          if (Number.isInteger(savedWard) && savedWard >= 1 && savedWard <= TOTAL_WARDS) {
+            currentWard = savedWard;
+          }
+
+          const savedCloud = localStorage.getItem(FIREBASE_CONFIG_KEY);
+          if (savedCloud) {
+            const parsedCfg = JSON.parse(savedCloud);
+            if (parsedCfg && typeof parsedCfg === 'object') {
+              cloudConfig = Object.assign(cloudConfig, parsedCfg);
+            }
+          }
+        } catch (err) {
+          const statusEl = document.getElementById('storageStatusText');
+          if (statusEl) {
+            statusEl.textContent = 'स्थिति: सत्र मेमोरी सक्रिय';
+          }
+        }
+      }
+
+      // Save current state to localStorage safely
+      function saveState() {
+        try {
+          const serializable = {};
+          for (let w = 1; w <= TOTAL_WARDS; w++) {
+            const key = String(w);
+            serializable[key] = Array.from(wardSelections[key]).sort((a, b) => a - b);
+          }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+          localStorage.setItem(ACTIVE_WARD_KEY, String(currentWard));
+        } catch (err) {
+          // Ignore storage quota / sandbox restrictions gracefully
+        }
+      }
+
+      // Merge remote ward selections dictionary into local state and update UI immediately
+      function applyRemoteStateSnapshot(remoteWardsData, sourceLabel) {
+        if (!remoteWardsData || typeof remoteWardsData !== 'object') return;
+        let hasNewChanges = false;
+        let lastAddedWard = null;
+        let lastAddedNum = null;
+
+        for (let w = 1; w <= TOTAL_WARDS; w++) {
+          const wKey = String(w);
+          const wardNode = remoteWardsData['ward_' + w] || remoteWardsData[wKey];
+          if (!wardNode) continue;
+
+          if (Array.isArray(wardNode)) {
+            wardNode.forEach((item, idx) => {
+              const candidate = typeof item === 'number' ? item : item ? idx : null;
+              if (
+                Number.isInteger(candidate) &&
+                candidate >= 1 &&
+                candidate <= NUMBERS_PER_WARD &&
+                !wardSelections[wKey].has(candidate)
+              ) {
+                wardSelections[wKey].add(candidate);
+                hasNewChanges = true;
+                lastAddedWard = w;
+                lastAddedNum = candidate;
+              }
+            });
+          } else if (typeof wardNode === 'object') {
+            Object.keys(wardNode).forEach((k) => {
+              const numVal = Number(k.replace('num_', ''));
+              if (
+                 wardNode[k] &&
+                Number.isInteger(numVal) &&
+                numVal >= 1 &&
+                numVal <= NUMBERS_PER_WARD &&
+                !wardSelections[wKey].has(numVal)
+              ) {
+                wardSelections[wKey].add(numVal);
+                hasNewChanges = true;
+                lastAddedWard = w;
+                lastAddedNum = numVal;
+              }
+            });
+          }
+        }
+
+        if (hasNewChanges) {
+          saveState();
+          renderWardTabs();
+          updateStatsUI();
+          renderNumbersGrid();
+          if (lastAddedWard && lastAddedNum) {
+            recordGlobalActivity(lastAddedWard, lastAddedNum, sourceLabel || 'क्लाउड सिंक');
+            const btn = document.getElementById('ward-' + lastAddedWard + '-num-' + lastAddedNum);
+            if (btn) {
+              btn.classList.add('remote-flash');
+            }
+          }
+        }
+      }
+
+      // Push single number selection to Firebase (SDK + REST fallback) and BroadcastChannel
+      function pushSelectionToBackend(ward, num) {
+        // 1. BroadcastChannel for instant multi-tab/window sync
+        if (broadcastChannel) {
+          try {
+            broadcastChannel.postMessage({
+              type: 'NUMBER_SELECTED',
+              ward: ward,
+              number: num,
+              timestamp: Date.now()
+            });
+          } catch (e) {
+            // Ignore channel errors
+          }
+        }
+
+        // 2. Firebase SDK Realtime Database write if initialized
+        if (firebaseDbRef) {
+          try {
+            firebaseDbRef
+              .child('wards/ward_' + ward + '/num_' + num)
+              .set({
+                selected: true,
+                ward: ward,
+                number: num,
+                updatedAt: Date.now()
+              })
+              .then(function () {
+                updateSyncIndicators(
+                  'Firebase क्लाउड लाइव',
+                  'अंतिम सिंक: ' + formatHindiTime(new Date()),
+                  true
+                );
+              })
+              .catch(function () {
+                // Fallback handled by REST if needed
+              });
+            return;
+          } catch (e) {
+            // Fall through to REST
+          }
+        }
+
+        // 3. Firebase Realtime Database REST PATCH fallback if databaseURL is configured
+        if (cloudConfig.databaseURL) {
+          const cleanBase = cloudConfig.databaseURL.replace(/\/+$/, '');
+          const room = (cloudConfig.roomKey || 'dhakerkhari_panchayat_v1').replace(/[^a-zA-Z0-9_-]/g, '');
+          const endpoint =
+            cleanBase + '/' + room + '/wards/ward_' + ward + '.json';
+          const payload = {};
+          payload['num_' + num] = {
+            selected: true,
+            ward: ward,
+            number: num,
+            updatedAt: Date.now()
+          };
+          fetch(endpoint, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+            .then(function (res) {
+              if (res.ok) {
+                isCloudConnected = true;
+                updateSyncIndicators(
+                  'Firebase क्लाउड लाइव',
+                  'अंतिम सिंक: ' + formatHindiTime(new Date()),
+                  true
+                );
+              }
+            })
+            .catch(function () {
+              updateSyncIndicators(
+                'ऑफ़लाइन कैश सक्रिय',
+                'स्थानीय मेमोरी में सुरक्षित',
+                false
+              );
+            });
+        }
+      }
+
+      // Sync entire local state up to Firebase so existing selections merge globally
+      function pushAllLocalSelectionsToCloud() {
+        if (!cloudConfig.databaseURL && !firebaseDbRef) return;
+        const wardsPayload = {};
+        let anySelected = false;
+        for (let w = 1; w <= TOTAL_WARDS; w++) {
+          const set = wardSelections[String(w)];
+          if (set.size > 0) {
+            anySelected = true;
+            wardsPayload['ward_' + w] = {};
+            set.forEach(function (num) {
+              wardsPayload['ward_' + w]['num_' + num] = {
+                selected: true,
+                ward: w,
+                number: num,
+                updatedAt: Date.now()
+              };
+            });
+          }
+        }
+        if (!anySelected) return;
+
+        if (firebaseDbRef) {
+          for (let w = 1; w <= TOTAL_WARDS; w++) {
+            const wKey = 'ward_' + w;
+            if (wardsPayload[wKey]) {
+              try {
+                firebaseDbRef.child('wards/' + wKey).update(wardsPayload[wKey]);
+              } catch (e) {}
+            }
+          }
+          return;
+        }
+
+        if (cloudConfig.databaseURL) {
+          const cleanBase = cloudConfig.databaseURL.replace(/\/+$/, '');
+          const room = (cloudConfig.roomKey || 'dhakerkhari_panchayat_v1').replace(/[^a-zA-Z0-9_-]/g, '');
+          const endpoint = cleanBase + '/' + room + '/wards.json';
+          fetch(endpoint, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(wardsPayload)
+          }).catch(function () {});
+        }
+      }
+
+      // Pull full snapshot from Firebase REST endpoint
+      function pullFullCloudSnapshot(showSuccessToast) {
+        if (!cloudConfig.databaseURL) {
+          if (showSuccessToast) {
+            showToast('स्थानीय और क्रॉस-टैब डेटा सिंक किया गया');
+          }
+          return;
+        }
+        const cleanBase = cloudConfig.databaseURL.replace(/\/+$/, '');
+        const room = (cloudConfig.roomKey || 'dhakerkhari_panchayat_v1').replace(/[^a-zA-Z0-9_-]/g, '');
+        const endpoint = cleanBase + '/' + room + '/wards.json';
+
+        fetch(endpoint)
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            isCloudConnected = true;
+            if (data && typeof data === 'object') {
+              applyRemoteStateSnapshot(data, 'Firebase क्लाउड');
+            }
+            updateSyncIndicators(
+              'Firebase क्लाउड लाइव',
+              'अंतिम सिंक: ' + formatHindiTime(new Date()),
+              true
+            );
+            if (showSuccessToast) {
+              showToast('Firebase क्लाउड डेटाबेस से नवीनतम स्थिति सिंक की गई');
+            }
+          })
+          .catch(function () {
+            isCloudConnected = false;
+            updateSyncIndicators(
+              'स्थानीय + टैब सिंक सक्रिय',
+              'क्लाउड URL की जाँच करें',
+              false
+            );
+            if (showSuccessToast) {
+              showToast('क्लाउड सर्वर से संपर्क नहीं हो सका; स्थानीय मेमोरी सुरक्षित है');
+            }
+          });
+      }
+
+      // Initialize real-time listeners (BroadcastChannel + Storage event + Firebase SDK / SSE)
+      function initRealtimeBackend() {
+        // 1. BroadcastChannel for instant real-time updates across browser tabs/windows
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+            broadcastChannel.onmessage = function (ev) {
+              const msg = ev.data;
+              if (msg && msg.type === 'NUMBER_SELECTED') {
+                const w = Number(msg.ward);
+                const n = Number(msg.number);
+                if (
+                  Number.isInteger(w) &&
+                  w >= 1 &&
+                  w <= TOTAL_WARDS &&
+                  Number.isInteger(n) &&
+                  n >= 1 &&
+                  n <= NUMBERS_PER_WARD
+                ) {
+                  const wKey = String(w);
+                  if (!wardSelections[wKey].has(n)) {
+                    wardSelections[wKey].add(n);
+                    saveState();
+                    renderWardTabs();
+                    updateStatsUI();
+                    if (currentWard === w) {
+                      renderNumbersGrid();
+                    }
+                    recordGlobalActivity(w, n, 'लाइव सिंक');
+                  }
+                }
+              }
+            };
+          }
+        } catch (e) {
+          broadcastChannel = null;
+        }
+
+        // 2. Window storage event listener (cross-tab localStorage sync)
+        window.addEventListener('storage', function (ev) {
+          if (ev.key === STORAGE_KEY && ev.newValue) {
+            try {
+              const parsed = JSON.parse(ev.newValue);
+              applyRemoteStateSnapshot(parsed, 'लाइव टैब सिंक');
+            } catch (e) {}
+          }
+        });
+
+        // 3. Connect to Firebase if configured
+        connectFirebaseBackend();
+      }
+
+      function cleanupCloudListeners() {
+        if (firebaseDbRef) {
+          try {
+            firebaseDbRef.off();
+          } catch (e) {}
+          firebaseDbRef = null;
+        }
+        if (sseSource) {
+          try {
+            sseSource.close();
+          } catch (e) {}
+          sseSource = null;
+        }
+        if (pollIntervalId) {
+          clearInterval(pollIntervalId);
+          pollIntervalId = null;
+        }
+      }
+
+      function connectFirebaseBackend() {
+        cleanupCloudListeners();
+
+        if (!cloudConfig.databaseURL) {
+          isCloudConnected = false;
+          updateSyncIndicators(
+            'रीयल-टाइम सिंक सक्रिय',
+            'क्रॉस-डिवाइस व टैब सिंक तैयार',
+            true
+          );
+          return;
+        }
+
+        const cleanBase = cloudConfig.databaseURL.replace(/\/+$/, '');
+        const room = (cloudConfig.roomKey || 'dhakerkhari_panchayat_v1').replace(/[^a-zA-Z0-9_-]/g, '');
+
+        // Try native Firebase Realtime Database SDK first
+        if (typeof window.firebase !== 'undefined' && window.firebase.database) {
+          try {
+            if (!firebaseAppInstance) {
+              firebaseAppInstance = window.firebase.initializeApp(
+                {
+                  apiKey: cloudConfig.apiKey || 'AIzaSyDemoKeyForRealtimeDatabaseSync',
+                  databaseURL: cleanBase,
+                  projectId: cloudConfig.projectId || 'dhakerkhari-panchayat'
+                },
+                'dhakerkhariApp_' + Date.now()
+              );
+            }
+            const db = firebaseAppInstance.database();
+            firebaseDbRef = db.ref(room);
+
+            firebaseDbRef.child('wards').on(
+              'value',
+              function (snapshot) {
+                isCloudConnected = true;
+                const val = snapshot ? snapshot.val() : null;
+                if (val) {
+                  applyRemoteStateSnapshot(val, 'Firebase लाइव');
+                }
+                updateSyncIndicators(
+                  'Firebase क्लाउड लाइव',
+                  'अंतिम सिंक: ' + formatHindiTime(new Date()),
+                  true
+                );
+              },
+              function () {
+                // Fallback to REST / SSE polling if SDK rules require REST
+                firebaseDbRef = null;
+                startRestRealtimeFallback(cleanBase, room);
+              }
+            );
+
+            pushAllLocalSelectionsToCloud();
+            return;
+          } catch (err) {
+            firebaseDbRef = null;
+          }
+        }
+
+        startRestRealtimeFallback(cleanBase, room);
+      }
+
+      function startRestRealtimeFallback(cleanBase, room) {
+        pullFullCloudSnapshot(false);
+        pushAllLocalSelectionsToCloud();
+
+        // Try Server-Sent Events (Firebase REST Streaming API)
+        const endpoint = cleanBase + '/' + room + '/wards.json';
+        try {
+          if (typeof EventSource !== 'undefined') {
+            sseSource = new EventSource(endpoint);
+            sseSource.addEventListener('put', function () {
+              pullFullCloudSnapshot(false);
+            });
+            sseSource.addEventListener('patch', function () {
+              pullFullCloudSnapshot(false);
+            });
+          }
+        } catch (e) {
+          sseSource = null;
+        }
+
+        // Also light periodic sync every 8 seconds as resilience backup
+        pollIntervalId = setInterval(function () {
+          pullFullCloudSnapshot(false);
+        }, 8000);
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById('statusToast');
+        const text = document.getElementById('statusToastText');
+        if (!toast || !text) return;
+        text.textContent = message;
+        toast.classList.remove('opacity-0', 'translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          toast.classList.remove('opacity-100', 'translate-y-0');
+          toast.classList.add('opacity-0', 'translate-y-2');
+        }, 1900);
+      }
+
+      // Render the 9 ward tabs ("वार्ड 1" through "वार्ड 9")
+      function renderWardTabs() {
+        const container = document.getElementById('wardTabsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (let w = 1; w <= TOTAL_WARDS; w++) {
+          const selectedCount = wardSelections[String(w)].size;
+          const isActive = w === currentWard;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.id = 'ward-tab-' + w;
+          btn.setAttribute('role', 'tab');
+          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          btn.setAttribute('data-ward', String(w));
+          btn.className =
+            'ward-tab shrink-0 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border flex items-center gap-2 ' +
+            (isActive
+              ? 'active-tab'
+              : 'bg-white/95 text-slate-800 border-white/20 hover:bg-white');
+
+          const labelSpan = document.createElement('span');
+          labelSpan.textContent = 'वार्ड ' + w;
+
+          const countBadge = document.createElement('span');
+          countBadge.id = 'ward-tab-count-' + w;
+          countBadge.className =
+            'text-[11px] font-semibold px-1.5 py-0.5 rounded-full ' +
+            (isActive
+              ? 'bg-white/20 text-white'
+              : selectedCount > 0
+              ? 'bg-emerald-100 text-emerald-800'
+              : 'bg-slate-100 text-slate-600');
+          countBadge.textContent = selectedCount + '/' + NUMBERS_PER_WARD;
+
+          btn.appendChild(labelSpan);
+          btn.appendChild(countBadge);
+
+          btn.addEventListener('click', function () {
+            if (currentWard !== w) {
+              currentWard = w;
+              saveState();
+              renderWardTabs();
+              updateStatsUI();
+              renderNumbersGrid();
+            }
+          });
+
+          container.appendChild(btn);
+        }
+      }
+
+      // Update ward and overall counts/progress bars
+      function updateStatsUI() {
+        const activeSet = wardSelections[String(currentWard)];
+        const wardSelected = activeSet.size;
+        const wardRemaining = NUMBERS_PER_WARD - wardSelected;
+        const wardPercent = Math.round((wardSelected / NUMBERS_PER_WARD) * 100);
+
+        document.getElementById('activeWardHeading').textContent =
+          'वार्ड ' + currentWard + ' — क्रमांक सूची (1 से 315)';
+        document.getElementById('wardSelectedCount').textContent = String(wardSelected);
+        document.getElementById('wardRemainingCount').textContent = String(wardRemaining);
+        document.getElementById('wardProgressLabel').textContent =
+          'वार्ड ' + currentWard + ' की चयन प्रगति';
+        document.getElementById('wardProgressPercent').textContent = wardPercent + '% पूर्ण';
+        document.getElementById('wardProgressBar').style.width = wardPercent + '%';
+
+        // Update filter button labels
+        document.getElementById('filterAllBtn').textContent = 'सभी (' + NUMBERS_PER_WARD + ')';
+        document.getElementById('filterSelectedBtn').textContent =
+          'केवल चयनित (' + wardSelected + ')';
+        document.getElementById('filterUnselectedBtn').textContent =
+          'केवल शेष (' + wardRemaining + ')';
+
+        // Update current tab badge
+        const tabBadge = document.getElementById('ward-tab-count-' + currentWard);
+        if (tabBadge) {
+          tabBadge.textContent = wardSelected + '/' + NUMBERS_PER_WARD;
+        }
+
+        // Update overall Panchayat totals across all 9 wards
+        let totalSelectedAllWards = 0;
+        for (let w = 1; w <= TOTAL_WARDS; w++) {
+          totalSelectedAllWards += wardSelections[String(w)].size;
+        }
+        const totalPossible = TOTAL_WARDS * NUMBERS_PER_WARD;
+        const overallPercent = Math.round((totalSelectedAllWards / totalPossible) * 100);
+
+        document.getElementById('overallSelectedCount').textContent = String(totalSelectedAllWards);
+        document.getElementById('overallPercentBadge').textContent = overallPercent + '%';
+        document.getElementById('overallProgressBar').style.width = overallPercent + '%';
+      }
+
+      // Render the 1..315 buttons for the active ward
+      function renderNumbersGrid() {
+        const grid = document.getElementById('numbersGrid');
+        const emptyNotice = document.getElementById('emptyFilterNotice');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        const activeSet = wardSelections[String(currentWard)];
+        const trimmedSearch = searchQuery.trim();
+        let visibleCount = 0;
+
+        const fragment = document.createDocumentFragment();
+
+        for (let num = 1; num <= NUMBERS_PER_WARD; num++) {
+          const isSelected = activeSet.has(num);
+
+          // Check filter
+          if (currentFilter === 'selected' && !isSelected) continue;
+          if (currentFilter === 'unselected' && isSelected) continue;
+
+          // Check search query
+          if (trimmedSearch !== '' && !String(num).includes(trimmedSearch)) {
+            continue;
+          }
+
+          visibleCount++;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.id = 'ward-' + currentWard + '-num-' + num;
+          btn.setAttribute('data-number', String(num));
+          btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+          btn.setAttribute(
+            'aria-label',
+            'वार्ड ' + currentWard + ' क्रमांक ' + num + (isSelected ? ' (चयनित)' : '')
+          );
+
+          btn.className =
+            'num-btn h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base border flex items-center justify-center ' +
+            (isSelected
+              ? 'selected-green bg-emerald-600 text-white border-emerald-700'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 shadow-2xs');
+
+          btn.textContent = String(num);
+
+          btn.addEventListener('click', function () {
+            selectNumberPermanently(currentWard, num, btn);
+          });
+
+          fragment.appendChild(btn);
+        }
+
+        grid.appendChild(fragment);
+
+        if (visibleCount === 0) {
+          emptyNotice.classList.remove('hidden');
+          grid.classList.add('hidden');
+        } else {
+          emptyNotice.classList.add('hidden');
+          grid.classList.remove('hidden');
+        }
+      }
+
+      // Clicking any number turns it green permanently and syncs globally + locally
+      function selectNumberPermanently(ward, num, btnElement) {
+        const wardKey = String(ward);
+        const alreadySelected = wardSelections[wardKey].has(num);
+
+        wardSelections[wardKey].add(num);
+        saveState();
+        pushSelectionToBackend(ward, num);
+        recordGlobalActivity(ward, num, 'इस डिवाइस से');
+
+        if (btnElement) {
+          btnElement.classList.add(
+            'selected-green',
+            'bg-emerald-600',
+            'text-white',
+            'border-emerald-700'
+          );
+          btnElement.classList.remove('bg-white', 'text-slate-800', 'border-slate-200');
+          btnElement.setAttribute('aria-pressed', 'true');
+          btnElement.setAttribute(
+            'aria-label',
+            'वार्ड ' + ward + ' क्रमांक ' + num + ' (चयनित)'
+          );
+        }
+
+        if (currentFilter === 'unselected') {
+          renderNumbersGrid();
+        }
+
+        updateStatsUI();
+
+        if (!alreadySelected) {
+          showToast(
+            'वार्ड ' +
+              ward +
+              ' • क्रमांक ' +
+              num +
+              ' स्थायी रूप से हरा (चयनित) और वैश्विक रूप से सिंक किया गया'
+          );
+        } else {
+          showToast('वार्ड ' + ward + ' • क्रमांक ' + num + ' पहले से ही स्थायी रूप से चयनित है');
+        }
+      }
+
+      function setFilter(filterMode) {
+        currentFilter = filterMode;
+        const allBtn = document.getElementById('filterAllBtn');
+        const selBtn = document.getElementById('filterSelectedBtn');
+        const unselBtn = document.getElementById('filterUnselectedBtn');
+
+        const activeClasses =
+          'px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-700 text-white shadow-sm transition';
+        const inactiveClasses =
+          'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+
+        allBtn.className = filterMode === 'all' ? activeClasses : inactiveClasses;
+        selBtn.className = filterMode === 'selected' ? activeClasses : inactiveClasses;
+        unselBtn.className = filterMode === 'unselected' ? activeClasses : inactiveClasses;
+
+        renderNumbersGrid();
+      }
+
+      function openFirebaseModal() {
+        const modal = document.getElementById('firebaseConfigModal');
+        const input = document.getElementById('firebaseDbUrlInput');
+        const roomInput = document.getElementById('firebaseRoomKeyInput');
+        const feedback = document.getElementById('firebaseModalFeedback');
+        if (feedback) feedback.classList.add('hidden');
+        if (input) input.value = cloudConfig.databaseURL || '';
+        if (roomInput) roomInput.value = cloudConfig.roomKey || 'dhakerkhari_panchayat_v1';
+        if (modal) modal.classList.remove('hidden');
+      }
+
+      function closeFirebaseModal() {
+        const modal = document.getElementById('firebaseConfigModal');
+        if (modal) modal.classList.add('hidden');
+      }
+
+      function parseUserFirebaseInput(rawText) {
+        const trimmed = (rawText || '').trim();
+        if (!trimmed) {
+          return { databaseURL: '', apiKey: '', projectId: '' };
+        }
+        // Check if JSON or JS object snippet containing databaseURL
+        if (trimmed.includes('{') || trimmed.includes('databaseURL')) {
+          const urlMatch = trimmed.match(/https:\/\/[a-zA-Z0-9-]+(?:\.firebaseio\.com|\.[a-z0-9-]+\.firebasedatabase\.app)/);
+          const keyMatch = trimmed.match(/apiKey\s*:\s*["']([^"']+)["']|"apiKey"\s*:\s*["']([^"']+)["']/);
+          const projMatch = trimmed.match(/projectId\s*:\s*["']([^"']+)["']|"projectId"\s*:\s*["']([^"']+)["']/);
+          return {
+            databaseURL: urlMatch ? urlMatch[0] : '',
+            apiKey: keyMatch ? (keyMatch[1] || keyMatch[2] || '') : '',
+            projectId: projMatch ? (projMatch[1] || projMatch[2] || '') : ''
+          };
+        }
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          return { databaseURL: trimmed.replace(/\/+$/, ''), apiKey: '', projectId: '' };
+        }
+        return {
+          databaseURL: 'https://' + trimmed.replace(/\/+$/, ''),
+          apiKey: '',
+          projectId: ''
+        };
+      }
+
+      function initEvents() {
+        document.getElementById('filterAllBtn').addEventListener('click', function () {
+          setFilter('all');
+        });
+        document.getElementById('filterSelectedBtn').addEventListener('click', function () {
+          setFilter('selected');
+        });
+        document.getElementById('filterUnselectedBtn').addEventListener('click', function () {
+          setFilter('unselected');
+        });
+        document.getElementById('resetFilterBtn').addEventListener('click', function () {
+          searchQuery = '';
+          const searchInput = document.getElementById('searchNumberInput');
+          const clearBtn = document.getElementById('clearSearchBtn');
+          if (searchInput) searchInput.value = '';
+          if (clearBtn) clearBtn.classList.add('hidden');
+          setFilter('all');
+        });
+
+        const searchInput = document.getElementById('searchNumberInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+        searchInput.addEventListener('input', function (e) {
+          searchQuery = e.target.value || '';
+          if (searchQuery.trim() !== '') {
+            clearSearchBtn.classList.remove('hidden');
+          } else {
+            clearSearchBtn.classList.add('hidden');
+          }
+          renderNumbersGrid();
+        });
+
+        clearSearchBtn.addEventListener('click', function () {
+          searchQuery = '';
+          searchInput.value = '';
+          clearSearchBtn.classList.add('hidden');
+          renderNumbersGrid();
+        });
+
+        // Cloud Sync & Modal buttons
+        document.getElementById('openFirebaseModalBtn').addEventListener('click', openFirebaseModal);
+        document.getElementById('closeFirebaseModalBtn').addEventListener('click', closeFirebaseModal);
+        document.getElementById('cancelFirebaseModalBtn').addEventListener('click', closeFirebaseModal);
+
+        document.getElementById('manualSyncBtn').addEventListener('click', function () {
+          pullFullCloudSnapshot(true);
+          pushAllLocalSelectionsToCloud();
+        });
+
+        document.getElementById('saveFirebaseConfigBtn').addEventListener('click', function () {
+          const rawInput = document.getElementById('firebaseDbUrlInput').value;
+          const roomVal =
+            (document.getElementById('firebaseRoomKeyInput').value || 'dhakerkhari_panchayat_v1').trim();
+          const parsed = parseUserFirebaseInput(rawInput);
+          const feedback = document.getElementById('firebaseModalFeedback');
+
+          if (!parsed.databaseURL) {
+            if (feedback) {
+              feedback.textContent = 'कृपया वैध Firebase Database URL (https://...firebaseio.com) दर्ज करें।';
+              feedback.className =
+                'rounded-xl px-3.5 py-2 text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200';
+              feedback.classList.remove('hidden');
+            }
+            return;
+          }
+
+          cloudConfig.databaseURL = parsed.databaseURL;
+          cloudConfig.apiKey = parsed.apiKey;
+          cloudConfig.projectId = parsed.projectId;
+          cloudConfig.roomKey = roomVal;
+
+          try {
+            localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cloudConfig));
+          } catch (e) {}
+
+          connectFirebaseBackend();
+          closeFirebaseModal();
+          showToast('Firebase रीयल-टाइम क्लाउड सिंक सफलतापूर्वक सक्रिय किया गया');
+        });
+
+        document.getElementById('disconnectFirebaseBtn').addEventListener('click', function () {
+          cloudConfig.databaseURL = '';
+          cloudConfig.apiKey = '';
+          cloudConfig.projectId = '';
+          try {
+            localStorage.removeItem(FIREBASE_CONFIG_KEY);
+          } catch (e) {}
+          connectFirebaseBackend();
+          closeFirebaseModal();
+          showToast('लोकल एवं क्रॉस-टैब सिंक मोड सक्रिय किया गया');
+        });
+
+        document.getElementById('copyRulesBtn').addEventListener('click', function () {
+          const rulesText = document.getElementById('firebaseRulesPre').textContent;
+          const tempArea = document.createElement('textarea');
+          tempArea.value = rulesText;
+          document.body.appendChild(tempArea);
+          tempArea.select();
+          try {
+            document.execCommand('copy');
+            showToast('Firebase सुरक्षा नियम क्लिपबोर्ड पर कॉपी किए गए');
+          } catch (e) {}
+          document.body.removeChild(tempArea);
+        });
+      }
+
+      // Initialize app on load
+      loadState();
+      initEvents();
+      renderWardTabs();
+      updateStatsUI();
+      renderNumbersGrid();
+      initRealtimeBackend();
+    })();
+  </script>
+</body>
+</html>
